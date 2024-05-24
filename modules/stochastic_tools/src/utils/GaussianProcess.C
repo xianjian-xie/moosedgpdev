@@ -7,7 +7,7 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "GaussianProcessGeneral.h"
+#include "GaussianProcess.h"
 #include "FEProblemBase.h"
 
 #include <petsctao.h>
@@ -24,15 +24,14 @@
 namespace StochasticTools
 {
 
-GaussianProcessGeneral::GPOptimizerOptions::GPOptimizerOptions(
-    const bool inp_show_optimization_details,
-    const unsigned int inp_num_iter,
-    const unsigned int inp_batch_size,
-    const Real inp_learning_rate,
-    const Real inp_b1,
-    const Real inp_b2,
-    const Real inp_eps,
-    const Real inp_lambda)
+GaussianProcess::GPOptimizerOptions::GPOptimizerOptions(const bool inp_show_optimization_details,
+                                                        const unsigned int inp_num_iter,
+                                                        const unsigned int inp_batch_size,
+                                                        const Real inp_learning_rate,
+                                                        const Real inp_b1,
+                                                        const Real inp_b2,
+                                                        const Real inp_eps,
+                                                        const Real inp_lambda)
   : show_optimization_details(inp_show_optimization_details),
     num_iter(inp_num_iter),
     batch_size(inp_batch_size),
@@ -44,20 +43,20 @@ GaussianProcessGeneral::GPOptimizerOptions::GPOptimizerOptions(
 {
 }
 
-GaussianProcessGeneral::GaussianProcessGeneral() {}
+GaussianProcess::GaussianProcess() {}
 
 void
-GaussianProcessGeneral::initialize(CovarianceFunctionBase * covariance_function,
-                                   const std::vector<std::string> & params_to_tune,
-                                   const std::vector<Real> & min,
-                                   const std::vector<Real> & max)
+GaussianProcess::initialize(CovarianceFunctionBase * covariance_function,
+                            const std::vector<std::string> & params_to_tune,
+                            const std::vector<Real> & min,
+                            const std::vector<Real> & max)
 {
   linkCovarianceFunction(covariance_function);
   generateTuningMap(params_to_tune, min, max);
 }
 
 void
-GaussianProcessGeneral::linkCovarianceFunction(CovarianceFunctionBase * covariance_function)
+GaussianProcess::linkCovarianceFunction(CovarianceFunctionBase * covariance_function)
 {
   _covariance_function = covariance_function;
   _covar_type = _covariance_function->type();
@@ -68,9 +67,9 @@ GaussianProcessGeneral::linkCovarianceFunction(CovarianceFunctionBase * covarian
 }
 
 void
-GaussianProcessGeneral::setupCovarianceMatrix(const RealEigenMatrix & training_params,
-                                              const RealEigenMatrix & training_data,
-                                              const GPOptimizerOptions & opts)
+GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
+                                       const RealEigenMatrix & training_data,
+                                       const GPOptimizerOptions & opts)
 {
   const bool batch_decision = opts.batch_size > 0 && (opts.batch_size <= training_params.rows());
   _batch_size = batch_decision ? opts.batch_size : training_params.rows();
@@ -94,16 +93,16 @@ GaussianProcessGeneral::setupCovarianceMatrix(const RealEigenMatrix & training_p
 }
 
 void
-GaussianProcessGeneral::setupStoredMatrices(const RealEigenMatrix & input)
+GaussianProcess::setupStoredMatrices(const RealEigenMatrix & input)
 {
   _K_cho_decomp = _K.llt();
   _K_results_solve = _K_cho_decomp.solve(input);
 }
 
 void
-GaussianProcessGeneral::generateTuningMap(const std::vector<std::string> & params_to_tune,
-                                          const std::vector<Real> & min_vector,
-                                          const std::vector<Real> & max_vector)
+GaussianProcess::generateTuningMap(const std::vector<std::string> & params_to_tune,
+                                   const std::vector<Real> & min_vector,
+                                   const std::vector<Real> & max_vector)
 {
   _num_tunable = 0;
 
@@ -136,7 +135,7 @@ GaussianProcessGeneral::generateTuningMap(const std::vector<std::string> & param
 }
 
 void
-GaussianProcessGeneral::standardizeParameters(RealEigenMatrix & data, bool keep_moments)
+GaussianProcess::standardizeParameters(RealEigenMatrix & data, bool keep_moments)
 {
   if (!keep_moments)
     _param_standardizer.computeSet(data);
@@ -144,7 +143,7 @@ GaussianProcessGeneral::standardizeParameters(RealEigenMatrix & data, bool keep_
 }
 
 void
-GaussianProcessGeneral::standardizeData(RealEigenMatrix & data, bool keep_moments)
+GaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
 {
   if (!keep_moments)
     _data_standardizer.computeSet(data);
@@ -152,9 +151,9 @@ GaussianProcessGeneral::standardizeData(RealEigenMatrix & data, bool keep_moment
 }
 
 void
-GaussianProcessGeneral::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
-                                            const RealEigenMatrix & training_data,
-                                            const GPOptimizerOptions & opts)
+GaussianProcess::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
+                                     const RealEigenMatrix & training_data,
+                                     const GPOptimizerOptions & opts)
 {
   std::vector<Real> theta(_num_tunable, 0.0);
   _covariance_function->buildHyperParamMap(_hyperparam_map, _hyperparam_vec_map);
@@ -236,7 +235,7 @@ GaussianProcessGeneral::tuneHyperParamsAdam(const RealEigenMatrix & training_par
 }
 
 Real
-GaussianProcessGeneral::getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outputs)
+GaussianProcess::getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outputs)
 {
   _covariance_function->computeCovarianceMatrix(_K, inputs, inputs, true);
 
@@ -253,7 +252,7 @@ GaussianProcessGeneral::getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outp
 }
 
 std::vector<Real>
-GaussianProcessGeneral::getGradient(RealEigenMatrix & inputs)
+GaussianProcess::getGradient(RealEigenMatrix & inputs)
 {
   RealEigenMatrix dKdhp(_batch_size, _batch_size);
   RealEigenMatrix alpha = _K_results_solve * _K_results_solve.transpose();
@@ -276,7 +275,7 @@ GaussianProcessGeneral::getGradient(RealEigenMatrix & inputs)
 }
 
 void
-GaussianProcessGeneral::mapToVec(
+GaussianProcess::mapToVec(
     const std::unordered_map<std::string, std::tuple<unsigned int, unsigned int, Real, Real>> &
         tuning_data,
     const std::unordered_map<std::string, Real> & scalar_map,
@@ -300,7 +299,7 @@ GaussianProcessGeneral::mapToVec(
 }
 
 void
-GaussianProcessGeneral::vecToMap(
+GaussianProcess::vecToMap(
     const std::unordered_map<std::string, std::tuple<unsigned int, unsigned int, Real, Real>> &
         tuning_data,
     std::unordered_map<std::string, Real> & scalar_map,
@@ -341,7 +340,7 @@ dataLoad(std::istream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * con
 
 template <>
 void
-dataStore(std::ostream & stream, StochasticTools::GaussianProcessGeneral & gp_utils, void * context)
+dataStore(std::ostream & stream, StochasticTools::GaussianProcess & gp_utils, void * context)
 {
   dataStore(stream, gp_utils.hyperparamMap(), context);
   dataStore(stream, gp_utils.hyperparamVectorMap(), context);
@@ -359,7 +358,7 @@ dataStore(std::ostream & stream, StochasticTools::GaussianProcessGeneral & gp_ut
 
 template <>
 void
-dataLoad(std::istream & stream, StochasticTools::GaussianProcessGeneral & gp_utils, void * context)
+dataLoad(std::istream & stream, StochasticTools::GaussianProcess & gp_utils, void * context)
 {
   dataLoad(stream, gp_utils.hyperparamMap(), context);
   dataLoad(stream, gp_utils.hyperparamVectorMap(), context);
