@@ -75,7 +75,6 @@ GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
   _batch_size = batch_decision ? opts.batch_size : training_params.rows();
   _K.resize(_num_outputs * _batch_size, _num_outputs * _batch_size);
 
-  std::cout << _tuning_data.size() << std::endl;
   if (_tuning_data.size())
     tuneHyperParamsAdam(training_params, training_data, opts);
 
@@ -112,7 +111,6 @@ GaussianProcess::generateTuningMap(const std::vector<std::string> & params_to_tu
   for (const auto param_i : index_range(params_to_tune))
   {
     const auto & hp = params_to_tune[param_i];
-    std::cout << "hp " << hp << " is tunable " << _covariance_function->isTunable(hp) << std::endl;
     if (_covariance_function->isTunable(hp))
     {
       unsigned int size;
@@ -164,8 +162,6 @@ GaussianProcess::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
   Real b1 = opts.b1;
   Real b2 = opts.b2;
   Real eps = opts.eps;
-
-  std::cout << "num tunable " << _num_tunable << std::endl;
 
   std::vector<Real> m0(_num_tunable, 0.0);
   std::vector<Real> v0(_num_tunable, 0.0);
