@@ -77,6 +77,8 @@ GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
 
   if (_tuning_data.size())
     tuneHyperParamsAdam(training_params, training_data, opts);
+    // tuneHyperParamsMcmc(training_params, training_data, opts);
+
 
   _K.resize(training_params.rows() * training_data.cols(),
             training_params.rows() * training_data.cols());
@@ -149,14 +151,41 @@ GaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
 }
 
 void
+GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
+                                     const RealEigenMatrix & training_data,
+                                     const GPOptimizerOptions & opts)
+{
+  std::cout << "enter MCMC " << std::endl;
+  for (const auto & pair : _tuning_data){
+    std::cout << pair.first << "-- " << pair.second << std::endl;
+  }
+
+}
+
+void
 GaussianProcess::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
                                      const RealEigenMatrix & training_data,
                                      const GPOptimizerOptions & opts)
 {
+  std::cout << "training params is" << training_params << std::endl;
+  std::cout << "training data is" << training_data << std::endl;
+  std::cout << "gp option is" << opts.num_iter << "," << opts.batch_size << "," <<opts.learning_rate << std::endl;
+  std::cout << "enter adam " << std::endl;
+  for (const auto & pair : _tuning_data){
+    std::cout << pair.first << "-- " << pair.second << std::endl;
+  }
+
   std::vector<Real> theta(_num_tunable, 0.0);
   _covariance_function->buildHyperParamMap(_hyperparam_map, _hyperparam_vec_map);
 
   mapToVec(_tuning_data, _hyperparam_map, _hyperparam_vec_map, theta);
+
+  std:: cout << "map to vector";
+  for (const auto& value : theta){
+    std::cout << value << " ";
+  }
+  std::cout << std::endl;
+
 
   // Internal params for Adam; set to the recommended values in the paper
   Real b1 = opts.b1;

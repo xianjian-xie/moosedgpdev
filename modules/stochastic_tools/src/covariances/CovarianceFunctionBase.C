@@ -125,10 +125,20 @@ CovarianceFunctionBase::buildHyperParamMap(
     dependent_covar->buildHyperParamMap(map, vec_map);
 
   // At the end we just append the hyperparameters this object owns
-  for (const auto & iter : _hp_map_real)
+  for (const auto & iter : _hp_map_real){
+    std::cout << "scaler" << iter.first << std::endl;
+    std::cout << iter.second << std::endl;
     map[iter.first] = iter.second;
-  for (const auto & iter : _hp_map_vector_real)
+  }
+  for (const auto & iter : _hp_map_vector_real){
+    std::cout << "vector" << iter.first << std::endl;
+    for (const auto& value : iter.second){
+      std::cout << value << " ";
+    }
+    std::cout << std::endl;
     vec_map[iter.first] = iter.second;
+  }
+    
 }
 
 bool

@@ -125,6 +125,11 @@ public:
    */
   void standardizeData(RealEigenMatrix & data, bool keep_moments = false);
 
+  // Tune hyperparameters using MCMC
+  void tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
+                           const RealEigenMatrix & training_data,
+                           const GPOptimizerOptions & opts);
+
   // Tune hyperparameters using Adam
   void tuneHyperParamsAdam(const RealEigenMatrix & training_params,
                            const RealEigenMatrix & training_data,
