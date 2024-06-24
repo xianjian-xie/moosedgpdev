@@ -76,8 +76,8 @@ GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
   _K.resize(_num_outputs * _batch_size, _num_outputs * _batch_size);
 
   if (_tuning_data.size())
-    tuneHyperParamsAdam(training_params, training_data, opts);
-    // tuneHyperParamsMcmc(training_params, training_data, opts);
+    // tuneHyperParamsAdam(training_params, training_data, opts);
+    tuneHyperParamsMcmc(training_params, training_data, opts);
 
 
   _K.resize(training_params.rows() * training_data.cols(),
@@ -150,15 +150,66 @@ GaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
   _data_standardizer.getStandardized(data);
 }
 
+
+
 void
 GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
                                      const RealEigenMatrix & training_data,
                                      const GPOptimizerOptions & opts)
-{
+{ 
   std::cout << "enter MCMC " << std::endl;
   for (const auto & pair : _tuning_data){
     std::cout << pair.first << "-- " << pair.second << std::endl;
   }
+  
+  MooseRandom generator;
+  generator.seed(0, 2);
+  // std::default_random_engine generator;
+  // generator.seed(2);
+  unsigned int layers = 1;
+  unsigned int n = training_params.rows();
+  std::cout << "training_params rows" << ": " << n << std::endl;
+  unsigned int new_n = 40;
+  unsigned int m = 100;
+  Real noise = 0.1;
+
+  // const RealEigenMatrix & training_params;
+  // const RealEigenMatrix & training_data;
+
+  // Set initial values for MCMC
+  Real g_0 = 0.01;
+
+  Real theta_0 = 0.5;
+  
+  if (layers == 2) {
+    Real theta_y_0 = 0.5;
+    Real theta_w_0 = 1;
+    const RealEigenMatrix & w_0 = training_params;
+  }
+  unsigned int nmcmc = 10000;
+  unsigned int burn = 8000;
+  unsigned int thin = 2;
+  unsigned int D = training_params.cols();
+  std::cout << "training_params cols" << ": " << D << std::endl;
+
+  unsigned int l = 1;
+  unsigned int u = 2;
+  Real alpha_g = 1.5;
+  Real beta_g = 3.9;
+  if (layers == 1) {
+    Real alpha_theta = 1.5;
+    Real beta_theta = 3.9/1.5;
+    std::cout << "beta_theta is" << ": " << beta_theta << std::endl;
+  }
+  if (layers == 2){
+    Real alpha_theta_w = 1.5;
+    Real alpha_theta_y = 1.5;
+    Real beta_theta_w = 3.9/4;
+    Real beta_theta_y = 3.9/6;
+  }
+  Real theta = theta_0;
+  Real g = g_0;
+  Real tau2 = 1;
 
 }
 
