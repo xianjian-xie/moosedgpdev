@@ -128,15 +128,13 @@ public:
   void sq_dist(const RealEigenMatrix &X1_in, RealEigenMatrix &D_out, const RealEigenMatrix &X2_in = RealEigenMatrix(0,0));
 
   struct Settings {
-    std::optional<Real> l;
-    std::optional<Real> u;
+    Real l;
+    Real u;
     struct {
-        std::optional<Real> g;
-        std::optional<Real> theta;
+      Real g;
+      Real theta;
     } alpha, beta;
   };
-
-  void check_settings(Settings & settings);
 
   struct Initial {
     Real theta;
@@ -157,19 +155,33 @@ public:
   };
 
   struct SampleGResult {
-    double g;
-    double ll;
+    Real g;
+    Real ll;
   };
 
-  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
-              Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result);
+  struct InvDetResult {
+    RealEigenMatrix Mi;
+    Real ldet;
+  };
 
   struct LogLResult {
     Real logl;
     Real tau2;
   };
 
-  
+
+  void Exp2(const RealEigenMatrix & distmat, Real tau2, Real theta, Real g, RealEigenMatrix & covmat);
+
+  void inv_det(const RealEigenMatrix & M, InvDetResult & result);
+
+  void logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta, 
+          bool outer, bool tau2, LogLResult & result, Real mu=0, Real scale=1);
+
+  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
+              Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result);
+
+
+  void check_settings(Settings & settings);
 
   // Tune hyperparameters using MCMC
   void tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
