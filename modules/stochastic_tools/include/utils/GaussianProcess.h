@@ -159,6 +159,12 @@ public:
     Real ll;
   };
 
+  struct SampleThetaResult {
+    Real theta;
+    Real ll;
+    Real tau2;
+  };
+
   struct InvDetResult {
     RealEigenMatrix Mi;
     Real ldet;
@@ -175,11 +181,14 @@ public:
   void inv_det(const RealEigenMatrix & M, InvDetResult & result);
 
   void logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta, 
-          bool outer, bool tau2, LogLResult & result, Real mu=0, Real scale=1);
+          LogLResult & result, bool outer=true, bool tau2=false, Real mu=0, Real scale=1);
 
   void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
               Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result);
 
+  void sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta_t, 
+              Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, Real ll_prev=NAN, bool tau2=false, 
+              Real prior_mean=0, Real scale=1);
 
   void check_settings(Settings & settings);
 
