@@ -236,6 +236,65 @@ GaussianProcess::check_settings(Settings &settings) {
   if (!settings.beta.theta.has_value()) settings.beta.theta = 3.9 / 1.5;
 }
 
+// Exp2
+void Exp2(const Eigen::MatrixXd &distmat, double tau2, double theta, double g, Eigen::MatrixXd &covmat) {
+  int n1 = distmat.rows();
+  int n2 = distmat.cols();
+  covmat.resize(n1, n2);
+  
+  for (int i = 0; i < n1; ++i) {
+      for (int j = 0; j < n2; ++j) {
+          double r = distmat(i, j) / theta;
+          covmat(i, j) = tau2 * std::exp(-r);
+      }
+  }
+
+  if (n1 == n2) {
+      for (int i = 0; i < n1; ++i) {
+          covmat(i, i) += tau2 * g;
+      }
+  }
+}
+
+// inv_det_py
+void inv_det_py(const Eigen::MatrixXd &M, Eigen::MatrixXd &Mi, double &ldet) {
+  Eigen::LLT<Eigen::MatrixXd> llt(M);
+  if (llt.info() == Eigen::NumericalIssue) {
+      throw std::runtime_error("Matrix is not positive definite");
+  }
+  Mi = llt.solve(Eigen::MatrixXd::Identity(M.rows(), M.cols()));
+  Eigen::MatrixXd L = llt.matrixL();
+  ldet = 2 * L.diagonal().array().log().sum();
+}
+
+void logl(const Eigen::VectorXd &out_vec, const Eigen::MatrixXd &in_dmat, double g, double theta, 
+          bool outer, int v, bool tau2, double mu, double scale, LogLResult &result) {
+  int n = out_vec.size();
+  Eigen::MatrixXd K = scale * Exp2(in_dmat, 1, theta, g);
+  std::unordered_map<std::string, Eigen::MatrixXd> inv_det = inv_det_py(K);
+  Eigen::MatrixXd Mi = inv_det["Mi"];
+  double ldet = inv_det["ldet"](0, 0);
+  Eigen::VectorXd diff = out_vec.array() - mu;
+  double quadterm = diff.transpose() * Mi * diff;
+
+  double logl_val;
+  if (outer) {
+      logl_val = (-n * 0.5) * std::log(quadterm) - 0.5 * ldet;
+  } else {
+      logl_val = -0.5 * quadterm - 0.5 * ldet;
+  }
+
+  double tau2_val;
+  if (tau2) {
+      tau2_val = quadterm / n;
+  } else {
+      tau2_val = NAN;
+  }
+
+  result.logl = logl_val;
+  result.tau2 = tau2_val;
+}
+
 void
 GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
                                      const RealEigenMatrix & training_data,
