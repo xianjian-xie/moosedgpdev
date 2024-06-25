@@ -21,6 +21,8 @@
 #include "MooseRandom.h"
 #include "Shuffle.h"
 
+#include <random>
+
 namespace StochasticTools
 {
 
@@ -150,7 +152,89 @@ GaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
   _data_standardizer.getStandardized(data);
 }
 
+void 
+GaussianProcess::sq_dist(const RealEigenMatrix &X1_in, RealEigenMatrix &D_out, const RealEigenMatrix &X2_in) {
+  if (X2_in.size() == 0) {
+    std::cout << "enter sym" << std::endl;
+    int n = X1_in.rows();
+    int m = X1_in.cols();
 
+    D_out.resize(n, n);
+    D_out.setZero();
+
+    for (int i = 0; i < n; ++i) {
+      D_out(i, i) = 0.0;
+      for (int j = i + 1; j < n; ++j) {
+          D_out(i, j) = (X1_in.row(i) - X1_in.row(j)).squaredNorm();
+          D_out(j, i) = D_out(i, j);
+      }
+    }
+  } else {
+    std::cout << "enter nosym" << std::endl;
+    int n1 = X1_in.rows();
+    int m = X1_in.cols();
+    int n2 = X2_in.rows();
+
+    D_out.resize(n1, n2);
+    D_out.setZero();
+
+    for (int i = 0; i < n1; ++i) {
+        for (int j = 0; j < n2; ++j) {
+            D_out(i, j) = (X1_in.row(i) - X2_in.row(j)).squaredNorm();
+        }
+    }
+  }
+}
+
+
+
+void
+GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
+              Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result) {
+  // // random generator
+  // std::random_device rd;
+  // std::mt19937 gen(rd());
+  MooseRandom gen;
+  gen.seed(0, 2);
+
+  
+  // propose
+  std::uniform_real_distribution<> runif(0, 1);
+  std::uniform_real_distribution<> runif_g(l * g_t / u, u * g_t / l);
+  Real g_star = runif_g(gen);
+
+  // calculate threshold
+  Real ru = runif(gen);
+  if (std::isnan(ll_prev)) {
+      ll_prev = logl(out_vec, in_dmat, g_t, theta, true, v).logl;
+  }
+  Real lpost_threshold = ll_prev + std::gamma_distribution<>(alpha, 1.0 / beta)(gen) + 
+                            std::log(ru) - std::log(g_t) + std::log(g_star);
+
+  Real ll_new = logl(out_vec, in_dmat, g_star, theta, true, v).logl;
+
+  // accept or reject
+  Real new_val = ll_new + std::gamma_distribution<>(alpha, 1.0 / beta)(gen);
+  if (new_val > lpost_threshold) {
+      result.g = g_star;
+      result.ll = ll_new;
+  } else {
+      result.g = g_t;
+      result.ll = ll_prev;
+  }
+}
+
+void 
+GaussianProcess::check_settings(Settings &settings) {
+  if (!settings.l.has_value()) settings.l = 1;
+  if (!settings.u.has_value()) settings.u = 2;
+
+  if (!settings.alpha.g.has_value()) settings.alpha.g = 1.5;
+  if (!settings.beta.g.has_value()) settings.beta.g = 3.9;
+
+  if (!settings.alpha.theta.has_value()) settings.alpha.theta = 1.5;
+  if (!settings.beta.theta.has_value()) settings.beta.theta = 3.9 / 1.5;
+}
 
 void
 GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
@@ -176,41 +260,75 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   // const RealEigenMatrix & training_params;
   // const RealEigenMatrix & training_data;
 
-  // Set initial values for MCMC
-  Real g_0 = 0.01;
-
-  Real theta_0 = 0.5;
   
-  if (layers == 2) {
-    Real theta_y_0 = 0.5;
-    Real theta_w_0 = 1;
-    const RealEigenMatrix & w_0 = training_params;
-  }
   unsigned int nmcmc = 10000;
   unsigned int burn = 8000;
   unsigned int thin = 2;
   unsigned int D = training_params.cols();
   std::cout << "training_params cols" << ": " << D << std::endl;
 
-  unsigned int l = 1;
-  unsigned int u = 2;
-  Real alpha_g = 1.5;
-  Real beta_g = 3.9;
-  if (layers == 1) {
-    Real alpha_theta = 1.5;
-    Real beta_theta = 3.9/1.5;
-    std::cout << "beta_theta is" << ": " << beta_theta << std::endl;
-  }
-  if (layers == 2){
-    Real alpha_theta_w = 1.5;
-    Real alpha_theta_y = 1.5;
-    Real beta_theta_w = 3.9/4;
-    Real beta_theta_y = 3.9/6;
-  }
-  Real theta = theta_0;
-  Real g = g_0;
-  Real tau2 = 1;
+  Settings settings;
+  check_settings(settings);
 
+  std::cout << "l: " << settings.l.value() << std::endl;
+  std::cout << "u: " << settings.u.value() << std::endl;
+  std::cout << "alpha.g: " << settings.alpha.g.value() << std::endl;
+  std::cout << "beta.g: " << settings.beta.g.value() << std::endl;
+  std::cout << "alpha.theta: " << settings.alpha.theta.value() << std::endl;
+  std::cout << "beta.theta: " << settings.beta.theta.value() << std::endl;
+
+  // Set initial values for MCMC
+  Real g_0 = 0.01;
+  Real theta_0 = 0.5;
+  Real tau_0 = 1;
+
+  Initial initial = {theta_0, g_0, tau_0};
+  std::cout << "theta: " << initial.theta << std::endl;
+  std::cout << "g: " << initial.g << std::endl;
+  std::cout << "tau2: " << initial.tau2 << std::endl;
+
+  RealEigenMatrix x = training_params;
+  RealEigenMatrix y = training_params;
+  // sq_dist(X1_in, D_out);
+  // std::cout << "distance matrix" << ": " << D_out << std::endl;
+  // sq_dist(X1_in, D_out, X2_in);
+  // std::cout << "distance matrix" << ": " << D_out << std::endl;
+
+  Output out;
+  out.x = x;
+  out.y = y;
+  out.nmcmc = nmcmc;
+  out.initial = initial;
+  out.settings = settings;
+  RealEigenMatrix dx;
+  sq_dist(x, dx);
+  RealEigenMatrix g(nmcmc, 1);
+  g(0,0) = initial.g;
+  RealEigenMatrix theta(nmcmc, 1);
+  theta(0,0) = initial.theta;
+  RealEigenMatrix tau2(nmcmc, 1);
+  tau2(0,0) = initial.tau2;
+  RealEigenMatrix ll_store(nmcmc, 1);
+  ll_store(0,0) = NAN;
+  Real ll = NAN;
+  
+  for (unsigned int j = 1; j < nmcmc; ++j) {
+    if (j % 500 == 0) {
+        std::cout << "round" << j << std::endl;
+    }
+
+    // Sample nugget (g)
+
+    // SampleGResult sample_g_result;
+    // sample_g(y, dx, g(j-1,0), theta(j-1,0), settings.alpha.g, settings.beta.g, settings.l, settings.u, ll, sample_g_result);
+
+    // std::cout << "g: " << result.g << std::endl;
+    // std::cout << "ll: " << result.ll << std::endl;
+    // g(j,0) = sample_g_result.g;
+    // ll = sample_g_result.ll;
+
+
+  }
 }
 
 void

@@ -125,6 +125,52 @@ public:
    */
   void standardizeData(RealEigenMatrix & data, bool keep_moments = false);
 
+  void sq_dist(const RealEigenMatrix &X1_in, RealEigenMatrix &D_out, const RealEigenMatrix &X2_in = RealEigenMatrix(0,0));
+
+  struct Settings {
+    std::optional<Real> l;
+    std::optional<Real> u;
+    struct {
+        std::optional<Real> g;
+        std::optional<Real> theta;
+    } alpha, beta;
+  };
+
+  void check_settings(Settings & settings);
+
+  struct Initial {
+    Real theta;
+    Real g;
+    Real tau2;
+  };
+
+  struct Output {
+    RealEigenMatrix x;
+    RealEigenMatrix y;
+    int nmcmc;
+    Settings settings;
+    Initial initial;
+    RealEigenMatrix g;
+    RealEigenMatrix theta;
+    RealEigenMatrix tau2;
+    RealEigenMatrix ll;
+  };
+
+  struct SampleGResult {
+    double g;
+    double ll;
+  };
+
+  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
+              Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result);
+
+  struct LogLResult {
+    Real logl;
+    Real tau2;
+  };
+
+  
+
   // Tune hyperparameters using MCMC
   void tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
                            const RealEigenMatrix & training_data,
