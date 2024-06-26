@@ -80,8 +80,8 @@ GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
   _K.resize(_num_outputs * _batch_size, _num_outputs * _batch_size);
 
   if (_tuning_data.size())
-    // tuneHyperParamsAdam(training_params, training_data, opts);
-    tuneHyperParamsMcmc(training_params, training_data, opts);
+    tuneHyperParamsAdam(training_params, training_data, opts);
+    // tuneHyperParamsMcmc(training_params, training_data, opts);
 
 
   _K.resize(training_params.rows() * training_data.cols(),
@@ -364,6 +364,11 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   for (const auto & pair : _tuning_data){
     std::cout << pair.first << "-- " << pair.second << std::endl;
   }
+
+  std::vector<Real> theta(_num_tunable, 0.0);
+  _covariance_function->buildHyperParamMap(_hyperparam_map, _hyperparam_vec_map);
+  mapToVec(_tuning_data, _hyperparam_map, _hyperparam_vec_map, theta);
+
   
   MooseRandom generator;
   generator.seed(0, 2);
@@ -462,9 +467,9 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     std::cout << "tau2: " << tau2(j,0) << std::endl;
     std::cout << "ll: " << ll_store(j,0) << std::endl;
 
-
-
+    
   }
+
 }
 
 void

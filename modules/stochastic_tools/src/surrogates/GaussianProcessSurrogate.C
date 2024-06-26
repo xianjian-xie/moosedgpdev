@@ -71,6 +71,9 @@ GaussianProcessSurrogate::evaluate(const std::vector<Real> & x,
 {
   const unsigned int n_dims = _training_params.cols();
 
+  Moose::out << "testing x is:" << std::endl;
+  Moose::out << Moose::stringify(x) << std::endl;
+
   mooseAssert(x.size() == n_dims,
               "Number of parameters provided for evaluation does not match number of parameters "
               "used for training.");
@@ -108,5 +111,8 @@ GaussianProcessSurrogate::evaluate(const std::vector<Real> & x,
   {
     y[output_i] = pred_value(0, output_i);
     std[output_i] = std_dev_mat(output_i, output_i);
+    Moose::out << "testing y is:" << std::endl;
+    Moose::out << Moose::stringify(y[output_i]) << std::endl;
+    Moose::out << Moose::stringify(std[output_i]) << std::endl;
   }
 }
