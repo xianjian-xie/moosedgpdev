@@ -80,8 +80,8 @@ GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
   _K.resize(_num_outputs * _batch_size, _num_outputs * _batch_size);
 
   if (_tuning_data.size())
-    tuneHyperParamsAdam(training_params, training_data, opts);
-    // tuneHyperParamsMcmc(training_params, training_data, opts);
+    // tuneHyperParamsAdam(training_params, training_data, opts);
+    tuneHyperParamsMcmc(training_params, training_data, opts);
 
 
   _K.resize(training_params.rows() * training_data.cols(),
@@ -262,32 +262,46 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
   // std::uniform_real_distribution<> runif(0, 1);
   // std::uniform_real_distribution<> runif_g(l * g_t / u, u * g_t / l);
   
-  MooseRandom generator1;
-  generator1.seed(0, 1980);
-  generator1.saveState();
+  // MooseRandom generator1;
+  // generator1.seed(0, 1980);
+  // generator1.saveState();
 
   // Real unif_rnd = MooseRandom::rand();
   // Real gamma_rnd = Gamma::quantile(unif_rnd, alpha, beta);
 
   // calculate threshold
-  Real ru = MooseRandom::rand();
-  Real g_star = Uniform::quantile(ru, l * g_t / u, u * g_t / l);
+
+  // Real ru = MooseRandom::rand();
+  Real ru = 0.7;
+  
+  // Real g_star = Uniform::quantile(ru, l * g_t / u, u * g_t / l);
+  Real g_star = 0.01;
 
   if (std::isnan(ll_prev)) {
     LogLResult ll_result;
     logl(out_vec, in_dmat, g_t, theta, ll_result, true, false);
     ll_prev = ll_result.logl;
+    std::cout << "ll_prev is " << ll_prev << std::endl;
   }
   Real lpost_threshold = ll_prev + std::log(Gamma::pdf(g_t, alpha, 1/beta)) + 
                             std::log(ru) - std::log(g_t) + std::log(g_star);
+
+  std::cout << "lpost_threshold is " << lpost_threshold << std::endl;
+
 
   Real ll_new;
   LogLResult ll_result;
   logl(out_vec, in_dmat, g_star, theta, ll_result, true, false);
   ll_new = ll_result.logl;
 
+  std::cout << "ll_new is " << ll_new << std::endl;
+
   // accept or reject
   Real new_val = ll_new + std::log(Gamma::pdf(g_star, alpha, 1/beta));
+
+  std::cout << "new_val is " << new_val << std::endl;
+
+  
   if (new_val > lpost_threshold) {
     result.g = g_star;
     result.ll = ll_new;
@@ -302,9 +316,9 @@ GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMa
               Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, Real ll_prev, bool tau2, 
               Real prior_mean, Real scale) {
 
-    MooseRandom generator2;
-    generator2.seed(0, 1980);
-    generator2.saveState();
+    // MooseRandom generator2;
+    // generator2.seed(0, 1980);
+    // generator2.saveState();
 
     // Propose value
     
@@ -365,13 +379,19 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     std::cout << pair.first << "-- " << pair.second << std::endl;
   }
 
-  std::vector<Real> theta(_num_tunable, 0.0);
+  std::cout << "training params is" << training_params << std::endl;
+  std::cout << "training data is" << training_data << std::endl;
+
+
+  std::vector<Real> theta1(_num_tunable, 0.0);
   _covariance_function->buildHyperParamMap(_hyperparam_map, _hyperparam_vec_map);
-  mapToVec(_tuning_data, _hyperparam_map, _hyperparam_vec_map, theta);
+  mapToVec(_tuning_data, _hyperparam_map, _hyperparam_vec_map, theta1);
 
   
   MooseRandom generator;
-  generator.seed(0, 2);
+  generator.seed(0, 1980);
+  Real h1 = MooseRandom::rand();
+  std::cout << "h1 is " << h1 << std::endl;
   // std::default_random_engine generator;
   // generator.seed(2);
   unsigned int layers = 1;
@@ -385,7 +405,7 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   // const RealEigenMatrix & training_data;
 
   
-  unsigned int nmcmc = 10000;
+  unsigned int nmcmc = 3;
   unsigned int burn = 8000;
   unsigned int thin = 2;
   unsigned int D = training_params.cols();
@@ -411,8 +431,15 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   std::cout << "g: " << initial.g << std::endl;
   std::cout << "tau2: " << initial.tau2 << std::endl;
 
-  RealEigenMatrix x = training_params;
-  RealEigenMatrix y = training_params;
+  // RealEigenMatrix x = training_params;
+  // RealEigenMatrix y = training_params;
+  RealEigenMatrix x(2,2);
+  x << 1,2,
+       3,4;
+  RealEigenMatrix y(2,1);
+  y << 3,
+       7;
+
   // sq_dist(X1_in, D_out);
   // std::cout << "distance matrix" << ": " << D_out << std::endl;
   // sq_dist(X1_in, D_out, X2_in);
@@ -462,14 +489,29 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
       tau2(j,0) = sample_theta_result.tau2;
     }
 
-    std::cout << "g: " << g(j,0) << std::endl;
-    std::cout << "theta: " << theta(j,0) << std::endl;
-    std::cout << "tau2: " << tau2(j,0) << std::endl;
-    std::cout << "ll: " << ll_store(j,0) << std::endl;
+    // std::cout << "g is: " << g(j,0) << std::endl;
+    // std::cout << "theta is: " << theta(j,0) << std::endl;
+    // std::cout << "tau2 is: " << tau2(j,0) << std::endl;
+    // std::cout << "ll is: " << ll_store(j,0) << std::endl;
 
-    
+    // theta1[0] = tau2(j,0);
+    // theta1[1] = theta(j,0);
+    // theta1[2] = theta(j,0);
+
+    theta1[0] = 0.96;
+    theta1[1] = 1.49;
+    theta1[2] = 1.49;
+
+    // std:: cout << "theta global:" << std::endl;
+    // for (const auto& value : theta1){
+    //   std::cout << value << " ";
+    // }
+    // std::cout << "theta global end" << std::endl;
+
+    vecToMap(_tuning_data, _hyperparam_map, _hyperparam_vec_map, theta1);
+    _covariance_function->loadHyperParamMap(_hyperparam_map, _hyperparam_vec_map);
+
   }
-
 }
 
 void

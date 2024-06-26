@@ -6,6 +6,7 @@
   elem_type = EDGE3
 []
 
+
 [Variables]
   [T]
     order = SECOND
@@ -22,7 +23,7 @@
   [source]
     type = BodyForce
     variable = T
-    value = 1.0
+    value = 9921.54
   []
 []
 
@@ -30,7 +31,7 @@
   [conductivity]
     type = GenericConstantMaterial
     prop_names = k
-    prop_values = 2.0
+    prop_values = 3.84763
   []
 []
 
@@ -39,7 +40,7 @@
     type = DirichletBC
     variable = T
     boundary = right
-    value = 300
+    value = 300.0
   []
 []
 
