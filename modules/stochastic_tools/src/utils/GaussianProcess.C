@@ -275,7 +275,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
   Real ru = 0.7;
   
   // Real g_star = Uniform::quantile(ru, l * g_t / u, u * g_t / l);
-  Real g_star = 0.01;
+  Real g_star = 0.02;
 
   if (std::isnan(ll_prev)) {
     LogLResult ll_result;
@@ -283,7 +283,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
     ll_prev = ll_result.logl;
     std::cout << "ll_prev is " << ll_prev << std::endl;
   }
-  Real lpost_threshold = ll_prev + std::log(Gamma::pdf(g_t, alpha, 1/beta)) + 
+  Real lpost_threshold = ll_prev + std::log(Gamma::pdf(g_t - 1.5e-8, alpha, beta)) + 
                             std::log(ru) - std::log(g_t) + std::log(g_star);
 
   std::cout << "lpost_threshold is " << lpost_threshold << std::endl;
@@ -297,7 +297,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
   std::cout << "ll_new is " << ll_new << std::endl;
 
   // accept or reject
-  Real new_val = ll_new + std::log(Gamma::pdf(g_star, alpha, 1/beta));
+  Real new_val = ll_new + std::log(Gamma::pdf(g_star - 1.5e-8, alpha, beta));
 
   std::cout << "new_val is " << new_val << std::endl;
 
@@ -439,7 +439,8 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   RealEigenMatrix y(2,1);
   y << 3,
        7;
-
+  std::cout << "matrix x:\n" << x << std::endl;
+  std::cout << "matrix y:\n" << y << std::endl;
   // sq_dist(X1_in, D_out);
   // std::cout << "distance matrix" << ": " << D_out << std::endl;
   // sq_dist(X1_in, D_out, X2_in);
