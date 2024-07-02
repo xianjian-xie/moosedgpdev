@@ -563,9 +563,9 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     // theta1[1] = theta(j,0);
     // theta1[2] = theta(j,0);
 
-    theta1[0] = 0.96;
-    theta1[1] = 1.49;
-    theta1[2] = 1.49;
+    theta1[0] = 1.117458397680367;
+    theta1[1] = 0.50030703;
+    theta1[2] = 5.8918648;
 
     // std:: cout << "theta global:" << std::endl;
     // for (const auto& value : theta1){
