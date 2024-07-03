@@ -256,14 +256,20 @@ GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & i
   std::cout << "enter logl" << std::endl;
   int n = out_vec.rows();
   RealEigenMatrix K(x1.rows(), x2.rows());
-  squared_exponential_covariance(x1, x2, 1, theta, g, K);
-  K = scale * K;
+  // squared_exponential_covariance(x1, x2, 1, theta, g, K);
+
+  _covariance_function->computeCovarianceMatrix(_K, x1, x2, true);
+
+  // K = scale * K;
 
   // std::cout << "K is " << K << std::endl;
 
+  // _K_cho_decomp = _K.llt();
+  // _K_results_solve = _K_cho_decomp.solve(input);
+
 
   InvDetResult inv_det_result;
-  inv_det(K, inv_det_result);
+  inv_det(_K, inv_det_result);
   RealEigenMatrix Mi = inv_det_result.Mi;
   Real ldet = inv_det_result.ldet;
 
