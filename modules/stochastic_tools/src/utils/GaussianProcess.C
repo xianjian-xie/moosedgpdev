@@ -218,11 +218,13 @@ GaussianProcess::squared_exponential_covariance(const RealEigenMatrix &x1,
   int n1 = x1.rows();
   int n2 = x2.rows();
   // k.resize(n1, n2);
+  // std::cout << "x1 rows is " << x1.rows() << std::endl;
+  // std::cout << "x1 cols is " << x1.cols() << std::endl;
   
   for (int i = 0; i < n1; ++i) {
     for (int j = 0; j < n2; ++j) {
       // Compute the scaled distance r_l(x1, x2)
-      Eigen::RowVectorXd diff = (x1.row(i) - x2.row(j)).array() / theta.row(i).array();
+      Eigen::RowVectorXd diff = (x1.row(i) - x2.row(j)).array() / theta.row(0).array();
       Real r_l = std::sqrt(diff.squaredNorm());
       Real cov_val = tau2 * std::exp(-0.5 * r_l * r_l);
       if (i == j) {
@@ -231,6 +233,7 @@ GaussianProcess::squared_exponential_covariance(const RealEigenMatrix &x1,
       k(i, j) = cov_val;
     }
   }
+  // std::cout << "k is " << k << std::endl;
 }
                                     
 
@@ -248,10 +251,11 @@ GaussianProcess::inv_det(const RealEigenMatrix & M, InvDetResult & result) {
 }
 
 void
-GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, Real theta, 
+GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta, 
           LogLResult & result, bool outer, bool tau2, Real mu, Real scale) {
+  std::cout << "enter logl" << std::endl;
   int n = out_vec.rows();
-  RealEigenMatrix K(out_vec.rows(), out_vec.cols());
+  RealEigenMatrix K(x1.rows(), x2.rows());
   squared_exponential_covariance(x1, x2, 1, theta, g, K);
   K = scale * K;
 
@@ -343,6 +347,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
 
 
   if (std::isnan(ll_prev)) {
+    std::cout << "enter ll_prev nan" << ll_prev << std::endl;
     LogLResult ll_result;
     logl(out_vec, in_dmat, x1, x2, g_t, theta, ll_result, true, false);
     ll_prev = ll_result.logl;
@@ -356,7 +361,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
 
   Real ll_new;
   LogLResult ll_result;
-  logl(out_vec, in_dmat, g_star, theta, ll_result, true, false);
+  logl(out_vec, in_dmat, x1, x2, g_star, theta, ll_result, true, false);
   ll_new = ll_result.logl;
 
   std::cout << "ll_new is " << ll_new << std::endl;
@@ -377,7 +382,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
 }
 
 void
-GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, Real theta_t,
+GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta_t,
               unsigned int i, Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, unsigned int j, Real ll_prev, bool tau2, 
               Real prior_mean, Real scale) {
 
@@ -389,7 +394,8 @@ GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMa
     // Compute acceptance threshold
     Real ru1 = MooseRandom::rand();
     Real ru = MooseRandom::rand();
-    theta_star(0, i) = Uniform::quantile(ru1, l * theta_t / u, u * theta_t / l);
+    theta_star(0, i) = Uniform::quantile(ru1, l * theta_t(0,i) / u, u * theta_t(0,i) / l);
+
 
     // Real ru = 0.7;
     // Real theta_star = 0.6;
@@ -433,11 +439,11 @@ GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMa
     // Accept or reject (lower bound of eps)
     Real new_val = ll_new + std::log(Gamma::pdf(theta_star(0,i), alpha, beta));
     if (new_val > lpost_threshold) {
-      result.theta = theta_star;
+      result.theta = theta_star(0,i);
       result.ll = ll_new;
       result.tau2 = tau2_new;
     } else {
-      result.theta = theta_t;
+      result.theta = theta_t(0,i);
       result.ll = ll_prev;
       result.tau2 = NAN;
     }
@@ -509,18 +515,6 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   std::cout << "alpha.theta: " << settings.alpha.theta << std::endl;
   std::cout << "beta.theta: " << settings.beta.theta << std::endl;
 
-  // Set initial values for MCMC
-  Real g_0 = 0.01;
-  // Real theta_0 = 0.5;
-  RealEigenMatrix theta_0(1,x.cols());
-  theta_0 << 0.5,0.5;
-  Real tau_0 = 1;
-
-  Initial initial = {theta_0, g_0, tau_0};
-  std::cout << "theta: " << initial.theta << std::endl;
-  std::cout << "g: " << initial.g << std::endl;
-  std::cout << "tau2: " << initial.tau2 << std::endl;
-
   RealEigenMatrix x = training_params;
   RealEigenMatrix y = training_data;
   // RealEigenMatrix x(2,2);
@@ -536,6 +530,20 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   // sq_dist(X1_in, D_out, X2_in);
   // std::cout << "distance matrix" << ": " << D_out << std::endl;
 
+
+  // Set initial values for MCMC
+  Real g_0 = 0.01;
+  // Real theta_0 = 0.5;
+  RealEigenMatrix theta_0(1,x.cols());
+  theta_0 << 0.5,0.5;
+  Real tau_0 = 1;
+
+  Initial initial = {theta_0, g_0, tau_0};
+  std::cout << "theta: " << initial.theta << std::endl;
+  std::cout << "g: " << initial.g << std::endl;
+  std::cout << "tau2: " << initial.tau2 << std::endl;
+
+
   Output out;
   out.x = x;
   out.y = y;
@@ -547,7 +555,7 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   RealEigenMatrix g(nmcmc, 1);
   g(0,0) = initial.g;
   RealEigenMatrix theta(nmcmc, x.cols());
-  theta(0,0) = initial.theta;
+  theta.row(0) = initial.theta;
   RealEigenMatrix tau2(nmcmc, 1);
   tau2(0,0) = initial.tau2;
   RealEigenMatrix ll_store(nmcmc, x.cols());
@@ -562,12 +570,12 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     // Sample nugget (g)
 
     SampleGResult sample_g_result;
-    sample_g(y, dx, g(j-1,0), theta.row(j-1), settings.alpha.g, settings.beta.g, settings.l, settings.u, ll, sample_g_result, j);
+    sample_g(y, dx, x, x, g(j-1,0), theta.row(j-1), settings.alpha.g, settings.beta.g, settings.l, settings.u, ll, sample_g_result, j);
 
     g(j,0) = sample_g_result.g;
     ll = sample_g_result.ll;
 
-    for (i=0; i<x.cols(); i++){
+    for (unsigned int i=0; i<x.cols(); i++){
       SampleThetaResult sample_theta_result;
       sample_theta(y, dx, x, x, g(j,0), theta.row(j-1), i, settings.alpha.theta, settings.beta.theta, settings.l,
                   settings.u, true, sample_theta_result, j, ll, true);
@@ -589,13 +597,13 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     std::cout << "ll is: " << ll_store.row(j) << std::endl;
     std::cout << std::endl;
 
-    // theta1[0] = tau2(j,0);
-    // theta1[1] = theta(j,0);
-    // theta1[2] = theta(j,0);
+    theta1[0] = tau2(j,0);
+    theta1[1] = theta(j,0);
+    theta1[2] = theta(j,1);
 
-    theta1[0] = 1.117458397680367;
-    theta1[1] = 0.50030703;
-    theta1[2] = 5.8918648;
+    // theta1[0] = 1.117458397680367;
+    // theta1[1] = 0.50030703;
+    // theta1[2] = 5.8918648;
 
     // std:: cout << "theta global:" << std::endl;
     // for (const auto& value : theta1){
