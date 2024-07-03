@@ -137,7 +137,7 @@ public:
   };
 
   struct Initial {
-    Real theta;
+    RealEigenMatrix theta;
     Real g;
     Real tau2;
   };
@@ -160,7 +160,7 @@ public:
   };
 
   struct SampleThetaResult {
-    Real theta;
+    RealEigenMatrix theta;
     Real ll;
     Real tau2;
   };
@@ -178,17 +178,24 @@ public:
 
   void Exp2(const RealEigenMatrix & distmat, Real tau2, Real theta, Real g, RealEigenMatrix & covmat);
 
+  void squared_exponential_covariance(const RealEigenMatrix &x1, 
+                                    const RealEigenMatrix &x2, 
+                                    Real tau2, 
+                                    const RealEigenMatrix &theta, 
+                                    Real g, 
+                                    RealEigenMatrix &k);
+
   void inv_det(const RealEigenMatrix & M, InvDetResult & result);
 
-  void logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta, 
+  void logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, Real theta, 
           LogLResult & result, bool outer=true, bool tau2=false, Real mu=0, Real scale=1);
 
-  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
+  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g_t, const RealEigenMatrix theta, 
               Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result, unsigned int j);
 
-  void sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta_t, 
-              Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, unsigned int j, Real ll_prev=NAN, bool tau2=false, 
-              Real prior_mean=0, Real scale=1);
+  void sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, Real theta_t,
+              unsigned int i, Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, unsigned int j, Real ll_prev, bool tau2, 
+              Real prior_mean, Real scale);
 
   void check_settings(Settings & settings);
 

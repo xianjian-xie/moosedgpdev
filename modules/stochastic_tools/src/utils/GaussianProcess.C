@@ -209,6 +209,32 @@ GaussianProcess::Exp2(const RealEigenMatrix & distmat, Real tau2, Real theta, Re
 }
 
 void 
+GaussianProcess::squared_exponential_covariance(const RealEigenMatrix &x1, 
+                  const RealEigenMatrix &x2, 
+                  Real tau2, 
+                  const RealEigenMatrix &theta, 
+                  Real g, 
+                  RealEigenMatrix &k){
+  int n1 = x1.rows();
+  int n2 = x2.rows();
+  // k.resize(n1, n2);
+  
+  for (int i = 0; i < n1; ++i) {
+    for (int j = 0; j < n2; ++j) {
+      // Compute the scaled distance r_l(x1, x2)
+      Eigen::RowVectorXd diff = (x1.row(i) - x2.row(j)).array() / theta.row(i).array();
+      Real r_l = std::sqrt(diff.squaredNorm());
+      Real cov_val = tau2 * std::exp(-0.5 * r_l * r_l);
+      if (i == j) {
+          cov_val += g;
+      }
+      k(i, j) = cov_val;
+    }
+  }
+}
+                                    
+
+void 
 GaussianProcess::inv_det(const RealEigenMatrix & M, InvDetResult & result) {
   Eigen::LLT<RealEigenMatrix> llt(M);
   if (llt.info() == Eigen::NumericalIssue) {
@@ -222,11 +248,11 @@ GaussianProcess::inv_det(const RealEigenMatrix & M, InvDetResult & result) {
 }
 
 void
-GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta, 
+GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, Real theta, 
           LogLResult & result, bool outer, bool tau2, Real mu, Real scale) {
   int n = out_vec.rows();
   RealEigenMatrix K(out_vec.rows(), out_vec.cols());
-  Exp2(in_dmat, 1, theta, g, K);
+  squared_exponential_covariance(x1, x2, 1, theta, g, K);
   K = scale * K;
 
   // std::cout << "K is " << K << std::endl;
@@ -274,7 +300,7 @@ GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & i
 }
 
 void
-GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, Real theta, 
+GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g_t, const RealEigenMatrix theta, 
               Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result, unsigned int j) {
 
   // propose
@@ -318,7 +344,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
 
   if (std::isnan(ll_prev)) {
     LogLResult ll_result;
-    logl(out_vec, in_dmat, g_t, theta, ll_result, true, false);
+    logl(out_vec, in_dmat, x1, x2, g_t, theta, ll_result, true, false);
     ll_prev = ll_result.logl;
     std::cout << "ll_prev is " << ll_prev << std::endl;
   }
@@ -351,20 +377,19 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
 }
 
 void
-GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g, Real theta_t, 
-              Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, unsigned int j, Real ll_prev, bool tau2, 
+GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, Real theta_t,
+              unsigned int i, Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, unsigned int j, Real ll_prev, bool tau2, 
               Real prior_mean, Real scale) {
 
     // MooseRandom generator2;
     // generator2.seed(0, 1980);
     // generator2.saveState();
-
+    RealEigenMatrix theta_star = theta_t;
     // Propose value
-    
     // Compute acceptance threshold
     Real ru1 = MooseRandom::rand();
     Real ru = MooseRandom::rand();
-    Real theta_star = Uniform::quantile(ru1, l * theta_t / u, u * theta_t / l);
+    theta_star(0, i) = Uniform::quantile(ru1, l * theta_t / u, u * theta_t / l);
 
     // Real ru = 0.7;
     // Real theta_star = 0.6;
@@ -385,20 +410,20 @@ GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMa
 
     if (std::isnan(ll_prev)) {
       LogLResult ll_result;
-      logl(out_vec, in_dmat, g, theta_t, ll_result,  true, true);
+      logl(out_vec, in_dmat, x1, x2, g, theta_t, ll_result, true, true);
       ll_prev = ll_result.logl;
       std::cout << "theta ll_prev is " << ll_prev << std::endl;
     }
               
-    Real lpost_threshold = ll_prev + std::log(Gamma::pdf(theta_t, alpha, beta)) + 
-                             std::log(ru) - std::log(theta_t) + std::log(theta_star);
+    Real lpost_threshold = ll_prev + std::log(Gamma::pdf(theta_t(0,i), alpha, beta)) + 
+                             std::log(ru) - std::log(theta_t(0,i)) + std::log(theta_star(0,i));
     std::cout << "theta lpost_threshold is " << lpost_threshold << std::endl;
 
     
     Real ll_new;
     Real tau2_new;
     LogLResult ll_result;
-    logl(out_vec, in_dmat, g, theta_star, ll_result, true, true);
+    logl(out_vec, in_dmat, x1, x2, g, theta_star, ll_result, true, true);
     ll_new = ll_result.logl;
     tau2_new = ll_result.tau2;
 
@@ -406,7 +431,7 @@ GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMa
 
       
     // Accept or reject (lower bound of eps)
-    Real new_val = ll_new + std::log(Gamma::pdf(theta_star, alpha, beta));
+    Real new_val = ll_new + std::log(Gamma::pdf(theta_star(0,i), alpha, beta));
     if (new_val > lpost_threshold) {
       result.theta = theta_star;
       result.ll = ll_new;
@@ -486,7 +511,9 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
 
   // Set initial values for MCMC
   Real g_0 = 0.01;
-  Real theta_0 = 0.5;
+  // Real theta_0 = 0.5;
+  RealEigenMatrix theta_0(1,x.cols());
+  theta_0 << 0.5,0.5;
   Real tau_0 = 1;
 
   Initial initial = {theta_0, g_0, tau_0};
@@ -519,12 +546,12 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   sq_dist(x, dx);
   RealEigenMatrix g(nmcmc, 1);
   g(0,0) = initial.g;
-  RealEigenMatrix theta(nmcmc, 1);
+  RealEigenMatrix theta(nmcmc, x.cols());
   theta(0,0) = initial.theta;
   RealEigenMatrix tau2(nmcmc, 1);
   tau2(0,0) = initial.tau2;
-  RealEigenMatrix ll_store(nmcmc, 1);
-  ll_store(0,0) = NAN;
+  RealEigenMatrix ll_store(nmcmc, x.cols());
+  ll_store.row(0) << NAN, NAN;
   Real ll = NAN;
   
   for (unsigned int j = 1; j < nmcmc; ++j) {
@@ -535,28 +562,31 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     // Sample nugget (g)
 
     SampleGResult sample_g_result;
-    sample_g(y, dx, g(j-1,0), theta(j-1,0), settings.alpha.g, settings.beta.g, settings.l, settings.u, ll, sample_g_result, j);
+    sample_g(y, dx, g(j-1,0), theta.row(j-1), settings.alpha.g, settings.beta.g, settings.l, settings.u, ll, sample_g_result, j);
 
     g(j,0) = sample_g_result.g;
     ll = sample_g_result.ll;
 
-    SampleThetaResult sample_theta_result;
-    sample_theta(y, dx, g(j,0),  theta(j-1,0), settings.alpha.theta, settings.beta.theta, settings.l,
-          settings.u, true, sample_theta_result, j, ll, true);
-    theta(j,0) = sample_theta_result.theta;
-    ll = sample_theta_result.ll;
-    ll_store(j,0) = ll;
-    if (std::isnan(sample_theta_result.tau2)) {
-      tau2(j,0) = tau2(j-1,0);
+    for (i=0; i<x.cols(); i++){
+      SampleThetaResult sample_theta_result;
+      sample_theta(y, dx, x, x, g(j,0), theta.row(j-1), i, settings.alpha.theta, settings.beta.theta, settings.l,
+                  settings.u, true, sample_theta_result, j, ll, true);
+      theta(j,i) = sample_theta_result.theta;
+      ll = sample_theta_result.ll;
+      ll_store(j,i) = ll;
+      if (std::isnan(sample_theta_result.tau2)) {
+        tau2(j,0) = tau2(j-1,0);
+      }
+      else {
+        tau2(j,0) = sample_theta_result.tau2;
+      }
     }
-    else {
-      tau2(j,0) = sample_theta_result.tau2;
-    }
+    
 
     std::cout << "g is: " << g(j,0) << std::endl;
-    std::cout << "theta is: " << theta(j,0) << std::endl;
+    std::cout << "theta is: " << theta.row(j) << std::endl;
     std::cout << "tau2 is: " << tau2(j,0) << std::endl;
-    std::cout << "ll is: " << ll_store(j,0) << std::endl;
+    std::cout << "ll is: " << ll_store.row(j) << std::endl;
     std::cout << std::endl;
 
     // theta1[0] = tau2(j,0);
