@@ -22,10 +22,10 @@ namespace StochasticTools
  * Gaussian Processes. It can be used to standardize parameters, manipulate
  * covariance data and compute additional stored matrices.
  */
-class GaussianProcess
+class DeepGaussianProcess
 {
 public:
-  GaussianProcess();
+  DeepGaussianProcess();
 
   /**
    * Initializes the most important structures in the Gaussian Process: the
@@ -44,12 +44,12 @@ public:
 
   /// Structure containing the optimization options for
   /// hyperparameter-tuning
-  struct GPOptimizerOptions
+  struct DGPOptimizerOptions
   {
     /// Default constructor
-    GPOptimizerOptions();
+    DGPOptimizerOptions();
     /// Construct using user-input
-    GPOptimizerOptions(const bool inp_show_optimization_details,
+    DGPOptimizerOptions(const bool inp_show_optimization_details,
                        const unsigned int inp_num_iter = 1000,
                        const unsigned int inp_batch_size = 0,
                        const Real inp_learning_rate = 1e-3,
@@ -85,7 +85,7 @@ public:
    */
   void setupCovarianceMatrix(const RealEigenMatrix & training_params,
                              const RealEigenMatrix & training_data,
-                             const GPOptimizerOptions & opts);
+                             const DGPOptimizerOptions & opts);
 
   /**
    * Sets up the Cholesky decomposition and inverse action of the covariance matrix.
@@ -202,12 +202,12 @@ public:
   // Tune hyperparameters using MCMC
   void tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
                            const RealEigenMatrix & training_data,
-                           const GPOptimizerOptions & opts);
+                           const DGPOptimizerOptions & opts);
 
   // Tune hyperparameters using Adam
   void tuneHyperParamsAdam(const RealEigenMatrix & training_params,
                            const RealEigenMatrix & training_data,
-                           const GPOptimizerOptions & opts);
+                           const DGPOptimizerOptions & opts);
 
   // Computes the loss function
   Real getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outputs);
@@ -344,12 +344,12 @@ protected:
 
 } // StochasticTools namespac
 
-// template <>
-// void dataStore(std::ostream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context);
-// template <>
-// void dataLoad(std::istream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context);
+template <>
+void dataStore(std::ostream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context);
+template <>
+void dataLoad(std::istream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context);
 
 template <>
-void dataStore(std::ostream & stream, StochasticTools::GaussianProcess & gp_utils, void * context);
+void dataStore(std::ostream & stream, StochasticTools::DeepGaussianProcess & dgp_utils, void * context);
 template <>
-void dataLoad(std::istream & stream, StochasticTools::GaussianProcess & gp_utils, void * context);
+void dataLoad(std::istream & stream, StochasticTools::DeepGaussianProcess & dgp_utils, void * context);

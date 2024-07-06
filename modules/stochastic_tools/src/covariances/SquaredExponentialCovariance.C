@@ -48,6 +48,7 @@ SquaredExponentialCovariance::computeCovarianceMatrix(RealEigenMatrix & K,
 
   SquaredExponentialFunction(
       K, x, xp, _length_factor, _sigma_f_squared, _sigma_n_squared, is_self_covariance);
+  // std::cout << "_length_factor _sigma_f_squared _sigma_n_squared 0 is" << _sigma_f_squared << std::endl;
 }
 
 void

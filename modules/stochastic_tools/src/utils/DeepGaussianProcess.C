@@ -7,7 +7,7 @@
 //* Licensed under LGPL 2.1, please see LICENSE for details
 //* https://www.gnu.org/licenses/lgpl-2.1.html
 
-#include "GaussianProcess.h"
+#include "DeepGaussianProcess.h"
 #include "FEProblemBase.h"
 
 #include <petsctao.h>
@@ -28,7 +28,7 @@
 namespace StochasticTools
 {
 
-GaussianProcess::GPOptimizerOptions::GPOptimizerOptions(const bool inp_show_optimization_details,
+DeepGaussianProcess::DGPOptimizerOptions::DGPOptimizerOptions(const bool inp_show_optimization_details,
                                                         const unsigned int inp_num_iter,
                                                         const unsigned int inp_batch_size,
                                                         const Real inp_learning_rate,
@@ -47,10 +47,10 @@ GaussianProcess::GPOptimizerOptions::GPOptimizerOptions(const bool inp_show_opti
 {
 }
 
-GaussianProcess::GaussianProcess() {}
+DeepGaussianProcess::DeepGaussianProcess() {}
 
 void
-GaussianProcess::initialize(CovarianceFunctionBase * covariance_function,
+DeepGaussianProcess::initialize(CovarianceFunctionBase * covariance_function,
                             const std::vector<std::string> & params_to_tune,
                             const std::vector<Real> & min,
                             const std::vector<Real> & max)
@@ -60,7 +60,7 @@ GaussianProcess::initialize(CovarianceFunctionBase * covariance_function,
 }
 
 void
-GaussianProcess::linkCovarianceFunction(CovarianceFunctionBase * covariance_function)
+DeepGaussianProcess::linkCovarianceFunction(CovarianceFunctionBase * covariance_function)
 {
   _covariance_function = covariance_function;
   _covar_type = _covariance_function->type();
@@ -71,9 +71,9 @@ GaussianProcess::linkCovarianceFunction(CovarianceFunctionBase * covariance_func
 }
 
 void
-GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
+DeepGaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
                                        const RealEigenMatrix & training_data,
-                                       const GPOptimizerOptions & opts)
+                                       const DGPOptimizerOptions & opts)
 {
   const bool batch_decision = opts.batch_size > 0 && (opts.batch_size <= training_params.rows());
   _batch_size = batch_decision ? opts.batch_size : training_params.rows();
@@ -100,14 +100,14 @@ GaussianProcess::setupCovarianceMatrix(const RealEigenMatrix & training_params,
 }
 
 void
-GaussianProcess::setupStoredMatrices(const RealEigenMatrix & input)
+DeepGaussianProcess::setupStoredMatrices(const RealEigenMatrix & input)
 {
   _K_cho_decomp = _K.llt();
   _K_results_solve = _K_cho_decomp.solve(input);
 }
 
 void
-GaussianProcess::generateTuningMap(const std::vector<std::string> & params_to_tune,
+DeepGaussianProcess::generateTuningMap(const std::vector<std::string> & params_to_tune,
                                    const std::vector<Real> & min_vector,
                                    const std::vector<Real> & max_vector)
 {
@@ -141,7 +141,7 @@ GaussianProcess::generateTuningMap(const std::vector<std::string> & params_to_tu
 }
 
 void
-GaussianProcess::standardizeParameters(RealEigenMatrix & data, bool keep_moments)
+DeepGaussianProcess::standardizeParameters(RealEigenMatrix & data, bool keep_moments)
 {
   if (!keep_moments)
     _param_standardizer.computeSet(data);
@@ -149,7 +149,7 @@ GaussianProcess::standardizeParameters(RealEigenMatrix & data, bool keep_moments
 }
 
 void
-GaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
+DeepGaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
 {
   if (!keep_moments)
     _data_standardizer.computeSet(data);
@@ -157,7 +157,7 @@ GaussianProcess::standardizeData(RealEigenMatrix & data, bool keep_moments)
 }
 
 void 
-GaussianProcess::sq_dist(const RealEigenMatrix &X1_in, RealEigenMatrix &D_out, const RealEigenMatrix &X2_in) {
+DeepGaussianProcess::sq_dist(const RealEigenMatrix &X1_in, RealEigenMatrix &D_out, const RealEigenMatrix &X2_in) {
   if (X2_in.size() == 0) {
     std::cout << "enter sym" << std::endl;
     int n = X1_in.rows();
@@ -191,7 +191,7 @@ GaussianProcess::sq_dist(const RealEigenMatrix &X1_in, RealEigenMatrix &D_out, c
 }
 
 void 
-GaussianProcess::Exp2(const RealEigenMatrix & distmat, Real tau2, Real theta, Real g, RealEigenMatrix & covmat) {
+DeepGaussianProcess::Exp2(const RealEigenMatrix & distmat, Real tau2, Real theta, Real g, RealEigenMatrix & covmat) {
   int n1 = distmat.rows();
   int n2 = distmat.cols();
   covmat.resize(n1, n2);
@@ -211,7 +211,7 @@ GaussianProcess::Exp2(const RealEigenMatrix & distmat, Real tau2, Real theta, Re
 }
 
 void 
-GaussianProcess::squared_exponential_covariance(const RealEigenMatrix &x1, 
+DeepGaussianProcess::squared_exponential_covariance(const RealEigenMatrix &x1, 
                   const RealEigenMatrix &x2, 
                   Real tau2, 
                   const RealEigenMatrix &theta, 
@@ -240,7 +240,7 @@ GaussianProcess::squared_exponential_covariance(const RealEigenMatrix &x1,
                                     
 
 void 
-GaussianProcess::inv_det(const RealEigenMatrix & M, InvDetResult & result) {
+DeepGaussianProcess::inv_det(const RealEigenMatrix & M, InvDetResult & result) {
   Eigen::LLT<RealEigenMatrix> llt(M);
   if (llt.info() == Eigen::NumericalIssue) {
       throw std::runtime_error("Matrix is not positive definite");
@@ -253,7 +253,7 @@ GaussianProcess::inv_det(const RealEigenMatrix & M, InvDetResult & result) {
 }
 
 void
-GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta, 
+DeepGaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta, 
           LogLResult & result, bool outer, bool tau2, Real mu, Real scale) {
   std::cout << "enter logl" << std::endl;
   int n = out_vec.rows();
@@ -312,7 +312,7 @@ GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & i
 }
 
 void
-GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g_t, const RealEigenMatrix theta, 
+DeepGaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g_t, const RealEigenMatrix theta, 
               Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result, unsigned int j) {
 
   // propose
@@ -390,7 +390,7 @@ GaussianProcess::sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix
 }
 
 void
-GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta_t,
+DeepGaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta_t,
               unsigned int i, Real alpha, Real beta, Real l, Real u, bool outer, SampleThetaResult & result, unsigned int j, Real ll_prev, bool tau2, 
               Real prior_mean, Real scale) {
 
@@ -459,7 +459,7 @@ GaussianProcess::sample_theta(const RealEigenMatrix & out_vec, const RealEigenMa
 
 
 void 
-GaussianProcess::check_settings(Settings &settings) {
+DeepGaussianProcess::check_settings(Settings &settings) {
   settings.l = 1;
   settings.u = 2;
 
@@ -472,11 +472,11 @@ GaussianProcess::check_settings(Settings &settings) {
 
 
 void
-GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
+DeepGaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
                                      const RealEigenMatrix & training_data,
-                                     const GPOptimizerOptions & opts)
+                                     const DGPOptimizerOptions & opts)
 { 
-  std::cout << "enter MCMC " << std::endl;
+  std::cout << "enter dgp mcmc " << std::endl;
 
   std::cout << "training params is" << training_params << std::endl;
   std::cout << "training data is" << training_data << std::endl;
@@ -638,17 +638,18 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     std::cout << "ll is: " << ll_store.row(j) << std::endl;
     std::cout << std::endl;
 
-    theta1[0] = tau2(j,0);
-    theta1[1] = theta(j,0);
-    theta1[2] = theta(j,1);
+    // theta1[0] = tau2(j,0);
+    // theta1[1] = theta(j,0);
+    // theta1[2] = theta(j,1);
 
     // theta1[0] = 1.117458397680367;
     // theta1[1] = 0.50030703;
     // theta1[2] = 5.8918648;
 
-    // theta1[0] = 1;
-    // theta1[1] = 1;
-    // theta1[2] = 1;
+    theta1[0] = 1;
+    theta1[1] = 1;
+    theta1[2] = 1;
+
 
     // std:: cout << "theta global:" << std::endl;
     // for (const auto& value : theta1){
@@ -666,14 +667,15 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
     // _covariance_function->computeCovarianceMatrix(_K, x, x, true);
     // std::cout << "_length_factor _sigma_f_squared _sigma_n_squared 1 is" << _length_factor << "," << _sigma_f_squared << std::endl;
 
+  
 
   }
 }
 
 void
-GaussianProcess::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
+DeepGaussianProcess::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
                                      const RealEigenMatrix & training_data,
-                                     const GPOptimizerOptions & opts)
+                                     const DGPOptimizerOptions & opts)
 {
   std::cout << "training params is" << training_params << std::endl;
   std::cout << "training data is" << training_data << std::endl;
@@ -781,7 +783,7 @@ GaussianProcess::tuneHyperParamsAdam(const RealEigenMatrix & training_params,
 }
 
 Real
-GaussianProcess::getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outputs)
+DeepGaussianProcess::getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outputs)
 {
   _covariance_function->computeCovarianceMatrix(_K, inputs, inputs, true);
 
@@ -798,7 +800,7 @@ GaussianProcess::getLoss(RealEigenMatrix & inputs, RealEigenMatrix & outputs)
 }
 
 std::vector<Real>
-GaussianProcess::getGradient(RealEigenMatrix & inputs)
+DeepGaussianProcess::getGradient(RealEigenMatrix & inputs)
 {
   RealEigenMatrix dKdhp(_batch_size, _batch_size);
   RealEigenMatrix alpha = _K_results_solve * _K_results_solve.transpose();
@@ -821,7 +823,7 @@ GaussianProcess::getGradient(RealEigenMatrix & inputs)
 }
 
 void
-GaussianProcess::mapToVec(
+DeepGaussianProcess::mapToVec(
     const std::unordered_map<std::string, std::tuple<unsigned int, unsigned int, Real, Real>> &
         tuning_data,
     const std::unordered_map<std::string, Real> & scalar_map,
@@ -845,7 +847,7 @@ GaussianProcess::mapToVec(
 }
 
 void
-GaussianProcess::vecToMap(
+DeepGaussianProcess::vecToMap(
     const std::unordered_map<std::string, std::tuple<unsigned int, unsigned int, Real, Real>> &
         tuning_data,
     std::unordered_map<std::string, Real> & scalar_map,
@@ -865,57 +867,57 @@ GaussianProcess::vecToMap(
 
 } // StochasticTools namespace
 
-// template <>
-// void
-// dataStore(std::ostream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context)
-// {
-//   // Store the L matrix as opposed to the full matrix to avoid compounding
-//   // roundoff error and decomposition error
-//   RealEigenMatrix L(decomp.matrixL());
-//   dataStore(stream, L, context);
-// }
-
-// template <>
-// void
-// dataLoad(std::istream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context)
-// {
-//   RealEigenMatrix L;
-//   dataLoad(stream, L, context);
-//   decomp.compute(L * L.transpose());
-// }
-
 template <>
 void
-dataStore(std::ostream & stream, StochasticTools::GaussianProcess & gp_utils, void * context)
+dataStore(std::ostream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context)
 {
-  dataStore(stream, gp_utils.hyperparamMap(), context);
-  dataStore(stream, gp_utils.hyperparamVectorMap(), context);
-  dataStore(stream, gp_utils.covarType(), context);
-  dataStore(stream, gp_utils.covarName(), context);
-  dataStore(stream, gp_utils.covarNumOutputs(), context);
-  dataStore(stream, gp_utils.dependentCovarNames(), context);
-  dataStore(stream, gp_utils.dependentCovarTypes(), context);
-  dataStore(stream, gp_utils.K(), context);
-  dataStore(stream, gp_utils.KResultsSolve(), context);
-  dataStore(stream, gp_utils.KCholeskyDecomp(), context);
-  dataStore(stream, gp_utils.paramStandardizer(), context);
-  dataStore(stream, gp_utils.dataStandardizer(), context);
+  // Store the L matrix as opposed to the full matrix to avoid compounding
+  // roundoff error and decomposition error
+  RealEigenMatrix L(decomp.matrixL());
+  dataStore(stream, L, context);
 }
 
 template <>
 void
-dataLoad(std::istream & stream, StochasticTools::GaussianProcess & gp_utils, void * context)
+dataLoad(std::istream & stream, Eigen::LLT<RealEigenMatrix> & decomp, void * context)
 {
-  dataLoad(stream, gp_utils.hyperparamMap(), context);
-  dataLoad(stream, gp_utils.hyperparamVectorMap(), context);
-  dataLoad(stream, gp_utils.covarType(), context);
-  dataLoad(stream, gp_utils.covarName(), context);
-  dataLoad(stream, gp_utils.covarNumOutputs(), context);
-  dataLoad(stream, gp_utils.dependentCovarNames(), context);
-  dataLoad(stream, gp_utils.dependentCovarTypes(), context);
-  dataLoad(stream, gp_utils.K(), context);
-  dataLoad(stream, gp_utils.KResultsSolve(), context);
-  dataLoad(stream, gp_utils.KCholeskyDecomp(), context);
-  dataLoad(stream, gp_utils.paramStandardizer(), context);
-  dataLoad(stream, gp_utils.dataStandardizer(), context);
+  RealEigenMatrix L;
+  dataLoad(stream, L, context);
+  decomp.compute(L * L.transpose());
+}
+
+template <>
+void
+dataStore(std::ostream & stream, StochasticTools::DeepGaussianProcess & dgp_utils, void * context)
+{
+  dataStore(stream, dgp_utils.hyperparamMap(), context);
+  dataStore(stream, dgp_utils.hyperparamVectorMap(), context);
+  dataStore(stream, dgp_utils.covarType(), context);
+  dataStore(stream, dgp_utils.covarName(), context);
+  dataStore(stream, dgp_utils.covarNumOutputs(), context);
+  dataStore(stream, dgp_utils.dependentCovarNames(), context);
+  dataStore(stream, dgp_utils.dependentCovarTypes(), context);
+  dataStore(stream, dgp_utils.K(), context);
+  dataStore(stream, dgp_utils.KResultsSolve(), context);
+  dataStore(stream, dgp_utils.KCholeskyDecomp(), context);
+  dataStore(stream, dgp_utils.paramStandardizer(), context);
+  dataStore(stream, dgp_utils.dataStandardizer(), context);
+}
+
+template <>
+void
+dataLoad(std::istream & stream, StochasticTools::DeepGaussianProcess & dgp_utils, void * context)
+{
+  dataLoad(stream, dgp_utils.hyperparamMap(), context);
+  dataLoad(stream, dgp_utils.hyperparamVectorMap(), context);
+  dataLoad(stream, dgp_utils.covarType(), context);
+  dataLoad(stream, dgp_utils.covarName(), context);
+  dataLoad(stream, dgp_utils.covarNumOutputs(), context);
+  dataLoad(stream, dgp_utils.dependentCovarNames(), context);
+  dataLoad(stream, dgp_utils.dependentCovarTypes(), context);
+  dataLoad(stream, dgp_utils.K(), context);
+  dataLoad(stream, dgp_utils.KResultsSolve(), context);
+  dataLoad(stream, dgp_utils.KCholeskyDecomp(), context);
+  dataLoad(stream, dgp_utils.paramStandardizer(), context);
+  dataLoad(stream, dgp_utils.dataStandardizer(), context);
 }
