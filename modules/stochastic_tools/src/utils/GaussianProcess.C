@@ -258,22 +258,48 @@ GaussianProcess::logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & i
   std::cout << "enter logl" << std::endl;
   int n = out_vec.rows();
   RealEigenMatrix K(x1.rows(), x2.rows());
-  squared_exponential_covariance(x1, x2, 1, theta, g, K);
+  // squared_exponential_covariance(x1, x2, 1, theta, g, K);
 
-  // _covariance_function->computeCovarianceMatrix(_K, x1, x2, true);
+  std::vector<Real> theta1(_num_tunable, 0.0);
+  theta1[0] = 1;
+  theta1[1] = theta(0,0);
+  theta1[2] = theta(0,1);
+
+  vecToMap(_tuning_data, _hyperparam_map, _hyperparam_vec_map, theta1);
+  _covariance_function->loadHyperParamMap(_hyperparam_map, _hyperparam_vec_map);
+
+  // const std::vector<Real> & _length_factor;
+  // const Real & _sigma_f_squared;
+  // const Real & _sigma_n_squared;
+  // std::cout << "print hyper1" << std::endl;
+  // _covariance_function->computeCovarianceMatrix(_K, x, x, true);
+  // std::cout << "_length_factor _sigma_f_squared _sigma_n_squared 1 is" << _length_factor << "," << _sigma_f_squared << std::endl;
+
+  _covariance_function->computeCovarianceMatrix(_K, x1, x2, true);
 
   // K = scale * K;
 
   // std::cout << "K is " << K << std::endl;
 
+  // RealEigenMatrix flattened_data = x1.reshaped(x1.rows(), 1);
+  
+  // setupStoredMatrices(flattened_data);
+  RealEigenMatrix Mi = _K.llt().solve(RealEigenMatrix::Identity(_K.rows(), _K.cols()));
+  Real ldet = std::log(_K.determinant());
+  // std::cout << "flattened_data1 is " << flattened_data << std::endl;
+  // std::cout << "Mi1 is " << Mi << std::endl;
+  // std::cout << "ldet1 is " << ldet << std::endl;
+
   // _K_cho_decomp = _K.llt();
   // _K_results_solve = _K_cho_decomp.solve(input);
 
 
-  InvDetResult inv_det_result;
-  inv_det(K, inv_det_result);
-  RealEigenMatrix Mi = inv_det_result.Mi;
-  Real ldet = inv_det_result.ldet;
+  // InvDetResult inv_det_result;
+  // inv_det(_K, inv_det_result);
+  // Mi = inv_det_result.Mi;
+  // ldet = inv_det_result.ldet;
+  // std::cout << "Mi2 is " << Mi << std::endl;
+  // std::cout << "ldet2 is " << ldet << std::endl;
 
   // std::cout << "Mi is " << Mi << std::endl;
   // std::cout << "Mi shape is " << Mi.rows() << " x " << Mi.cols() << std::endl;
@@ -605,7 +631,7 @@ GaussianProcess::tuneHyperParamsMcmc(const RealEigenMatrix & training_params,
   
   for (unsigned int j = 1; j < nmcmc; ++j) {
     if (j % 500 == 0) {
-        std::cout << "round" << j << std::endl;
+      std::cout << "round" << j << std::endl;
     }
 
     // Sample nugget (g)
