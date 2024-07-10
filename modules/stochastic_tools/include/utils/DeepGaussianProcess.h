@@ -129,15 +129,19 @@ public:
 
   struct Settings {
     Real l;
-    Real u;
+    Real u; 
+
     struct {
-      Real g;
-      Real theta;
+      Real g;         
+      Real theta_w;  
+      Real theta_y; 
     } alpha, beta;
   };
 
   struct Initial {
-    RealEigenMatrix theta;
+    RealEigenMatrix w;
+    Real theta_y;
+    RealEigenMatrix theta_w;
     Real g;
     Real tau2;
   };
@@ -190,7 +194,7 @@ public:
   void logl(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta, 
           LogLResult & result, bool outer=true, bool tau2=false, Real mu=0, Real scale=1);
 
-  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g_t, const RealEigenMatrix theta, 
+  void sample_g(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, Real g_t, const RealEigenMatrix theta, 
               Real alpha, Real beta, Real l, Real u, Real ll_prev, SampleGResult & result, unsigned int j);
 
   void sample_theta(const RealEigenMatrix & out_vec, const RealEigenMatrix & in_dmat, const RealEigenMatrix & x1, const RealEigenMatrix & x2, Real g, const RealEigenMatrix & theta_t,
